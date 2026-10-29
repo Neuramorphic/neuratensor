@@ -1,0 +1,2 @@
+[console_scripts]
+neuratensor = neuratensor.cli:main

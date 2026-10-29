@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuratensor"
+version = "4.0.3"
+description = "Production neuromorphic inference SDK — selective SNN-SSM hybrid with spike sparsity, CPU/CUDA/MPS"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Neuramorphic, Inc.", email = "info@neuramorphic.ai" }]
+requires-python = ">=3.9"
+keywords = [
+    "neuromorphic", "snn", "ssm", "mamba", "cuda", "inference",
+    "deep-learning", "ai", "edge", "jetson",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Environment :: GPU :: NVIDIA CUDA",
+]
+dependencies = [
+    "torch>=2.0.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "pydantic>=2.0.0",
+    "httpx>=0.24.0",
+]
+triton = ["triton>=2.1.0"]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+]
+
+[project.urls]
+Homepage     = "https://neuramorphic.ai"
+Documentation = "https://docs.neuramorphic.ai"
+Repository   = "https://github.com/neuramorphic/neuratensor"
+"Bug Reports" = "https://github.com/neuramorphic/neuratensor/issues"
+
+[project.scripts]
+neuratensor = "neuratensor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["neuratensor*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W"]

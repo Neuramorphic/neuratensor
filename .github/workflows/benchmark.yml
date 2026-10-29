@@ -1,0 +1,92 @@
+name: Benchmark Suite
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'neuratensor/**'
+      - 'tests/**'
+  pull_request:
+  schedule:
+    - cron: '0 2 * * 0'  # Weekly on Sunday at 2am UTC
+  workflow_dispatch:
+
+jobs:
+  benchmark-cpu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e .
+
+      - name: Run CPU benchmark
+        run: |
+          neuratensor benchmark pico --seq-length 64 --iters 100 | tee benchmark-cpu.txt
+          neuratensor benchmark nano --seq-length 64 --iters 100 | tee -a benchmark-cpu.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-cpu
+          path: benchmark-cpu.txt
+
+  benchmark-cuda:
+    # Requires self-hosted runner with GPU
+    # Or use RunsOn, Namespace, or other GPU runner service
+    if: github.repository == 'neuramorphic/neuratensor' && github.event_name != 'pull_request'
+    runs-on: [self-hosted, gpu]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install torch
+          pip install -e .
+
+      - name: GPU info
+        run: nvidia-smi
+
+      - name: Run CUDA benchmark
+        run: |
+          neuratensor benchmark small --seq-length 64 --iters 100 | tee benchmark-cuda.txt
+          neuratensor benchmark medium --seq-length 64 --iters 50 | tee -a benchmark-cuda.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-cuda
+          path: benchmark-cuda.txt
+
+  publish-results:
+    needs: [benchmark-cpu]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Update benchmark results in repo
+        run: |
+          mkdir -p benchmarks/
+          cp benchmark-results-cpu/benchmark-cpu.txt benchmarks/latest-cpu.txt
+          date -u > benchmarks/last-run.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add benchmarks/
+          git diff --staged --quiet || git commit -m "Update benchmark results [skip ci]"
+          git push

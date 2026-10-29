@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  # ── CPU inference (dev / staging) ────────────────────────────────────
+  neuratensor-cpu:
+    build:
+      context: .
+      target: runtime
+    image: neuratensor:3.0.0-cpu
+    ports:
+      - "8080:8080"
+    environment:
+      NEURATENSOR_PRESET: small
+      NEURATENSOR_COMPILE: "0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ── GPU inference (production) ────────────────────────────────────────
+  neuratensor-gpu:
+    build:
+      context: .
+      target: runtime
+    image: neuratensor:3.0.0-gpu
+    ports:
+      - "8081:8080"
+    environment:
+      NEURATENSOR_PRESET: medium
+      NEURATENSOR_COMPILE: "1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles:
+      - gpu
+    restart: unless-stopped
