@@ -2,7 +2,21 @@
 
 All notable changes to NeuraTensor will be documented in this file.
 
-## [4.1.0] - 2026-10-29
+## [4.0.4] - 2026-10-29
+
+### Fixed
+- **Critical: Chunked LIF scan disabled by default** due to numerical instability. The chunked parallel scan implementation has a bug that produces incorrect spike trains and NaN values in membrane state for long sequences (T>128) with high beta values (~0.9). Sequential scan is now the default, which is slower but numerically stable and correct.
+  - Added `use_chunked=False` parameter to `LIFLayer` and `AdaptiveLIFLayer`
+  - Chunked scan can be re-enabled with `use_chunked=True` but is not recommended until the numerical issues are resolved
+  - Bug manifests as 1-2% spike mismatch and NaN accumulation in membrane potential
+  - Sequential scan is O(T) but correct; chunked was O(T/chunk_size) but buggy
+
+### Technical Details
+The chunked scan's reset propagation accumulates floating-point error in bfloat16 when beta is close to 1.0 and there are many remaining timesteps in a chunk. The error compounds across chunks, eventually producing NaN in the membrane state. This was caught in extended testing with T=256, size=128 configurations that don't appear in the standard test suite.
+
+**Impact:** Models trained or run with v4.0.0-4.0.3 using the default chunked scan may have incorrect dynamics. Re-train or re-run with v4.0.4+ for correct results.
+
+## [4.1.0] - 2026-10-29 [UNPUBLISHED]
 
 ### Added
 - **🔐 Trusted Publishing with GitHub Actions**: First release published via OIDC authentication with cryptographic provenance attestation. No more manual API tokens — every release is now verifiable from source to package.

@@ -186,7 +186,7 @@ def _lif_sequential_scan(
 
 class LIFLayer(nn.Module):
     """
-    Leaky Integrate-and-Fire layer with chunked parallel scan.
+    Leaky Integrate-and-Fire layer with optional chunked parallel scan.
 
     Dynamics (per timestep)::
 
@@ -197,9 +197,14 @@ class LIFLayer(nn.Module):
     β  (membrane decay) is learnable per neuron.
     θ  (threshold) is fixed at init (use AdaptiveLIFLayer for learnable θ).
 
-    For T > 1 the forward pass uses a chunked parallel scan that
-    reduces Python dispatch overhead from O(T) to O(T / chunk_size).
-    For T = 1 a dedicated single-step path executes with zero loops.
+    **Note on chunked scan:** The chunked parallel implementation has known
+    numerical issues with long sequences (T>128) and high beta values that
+    can produce NaN in the membrane state. It is disabled by default until
+    these issues are resolved. Use `use_chunked=True` to enable it at your
+    own risk, or use the sequential scan (default) which is slower but correct.
+
+    For T = 1 a dedicated single-step path executes with zero loops regardless
+    of the `use_chunked` setting.
 
     Parameters
     ----------
@@ -209,7 +214,8 @@ class LIFLayer(nn.Module):
     learn_beta      : make β a learnable parameter
     surrogate_slope : sharpness of surrogate gradient
     dropout         : spike dropout probability (training regularisation)
-    chunk_size      : timesteps per chunk in parallel scan
+    use_chunked     : use chunked parallel scan (faster but has numerical issues)
+    chunk_size      : timesteps per chunk in parallel scan (if use_chunked=True)
     multi_threshold : if True, neurons get thresholds drawn from
                       {θ, 1.5θ, 2θ} for richer spike patterns
     """
@@ -222,12 +228,14 @@ class LIFLayer(nn.Module):
         learn_beta: bool = True,
         surrogate_slope: float = 10.0,
         dropout: float = 0.0,
+        use_chunked: bool = False,
         chunk_size: int = 64,
         multi_threshold: bool = False,
     ) -> None:
         super().__init__()
         self.size = size
         self.surrogate_slope = surrogate_slope
+        self.use_chunked = use_chunked
         self.chunk_size = chunk_size
 
         # β in logit space so sigmoid keeps it in (0, 1)
@@ -285,10 +293,17 @@ class LIFLayer(nn.Module):
                 x[:, 0, :], membrane, beta, self.threshold, self.surrogate_slope,
             )
             spikes = spk.unsqueeze(1)
-        else:
+        elif self.use_chunked:
+            # Chunked scan: faster but has numerical issues with long sequences
+            # Use at your own risk - may produce NaN in membrane state
             spikes, membrane = _lif_chunked_scan(
                 x, membrane, beta, self.threshold, self.surrogate_slope,
                 chunk_size=self.chunk_size,
+            )
+        else:
+            # Sequential scan: slower but numerically stable and correct
+            spikes, membrane = _lif_sequential_scan(
+                x, membrane, beta, self.threshold, self.surrogate_slope,
             )
 
         if self.drop is not None and self.training:
@@ -300,9 +315,10 @@ class LIFLayer(nn.Module):
         beta_mean = torch.sigmoid(self.beta_logit).mean().item()
         theta_mean = self.threshold.mean().item()
         multi = self.threshold.unique().numel() > 1
+        scan_mode = "chunked" if self.use_chunked else "sequential"
         return (
             f"size={self.size}, β≈{beta_mean:.3f}, θ≈{theta_mean:.2f}, "
-            f"chunk={self.chunk_size}, multi_θ={multi}"
+            f"scan={scan_mode}, multi_θ={multi}"
         )
 
 
@@ -328,11 +344,13 @@ class AdaptiveLIFLayer(nn.Module):
         learn_beta: bool = True,
         surrogate_slope: float = 10.0,
         dropout: float = 0.0,
+        use_chunked: bool = False,
         chunk_size: int = 64,
     ) -> None:
         super().__init__()
         self.size = size
         self.surrogate_slope = surrogate_slope
+        self.use_chunked = use_chunked
         self.chunk_size = chunk_size
 
         # β
@@ -378,10 +396,16 @@ class AdaptiveLIFLayer(nn.Module):
                 x[:, 0, :], membrane, beta, threshold, self.surrogate_slope,
             )
             spikes = spk.unsqueeze(1)
-        else:
+        elif self.use_chunked:
+            # Chunked scan: faster but has numerical issues with long sequences
             spikes, membrane = _lif_chunked_scan(
                 x, membrane, beta, threshold, self.surrogate_slope,
                 chunk_size=self.chunk_size,
+            )
+        else:
+            # Sequential scan: slower but numerically stable and correct
+            spikes, membrane = _lif_sequential_scan(
+                x, membrane, beta, threshold, self.surrogate_slope,
             )
 
         if self.drop is not None and self.training:

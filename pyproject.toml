@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuratensor"
-version = "4.1.0"
+version = "4.0.4"
 description = "Production neuromorphic inference SDK — selective SNN-SSM hybrid with spike sparsity, CPU/CUDA/MPS"
 readme = "README.md"
 license = { text = "Apache-2.0" }

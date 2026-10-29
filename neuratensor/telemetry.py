@@ -200,4 +200,4 @@ def track_benchmark(stats: dict) -> None:
 
 
 # Set at package import time by __init__.py
-_VERSION = "4.1.0"
+_VERSION = "4.0.4"
