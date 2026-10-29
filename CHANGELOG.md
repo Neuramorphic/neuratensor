@@ -2,6 +2,23 @@
 
 All notable changes to NeuraTensor will be documented in this file.
 
+## [4.1.0] - 2026-10-29
+
+### Added
+- **🔐 Trusted Publishing with GitHub Actions**: First release published via OIDC authentication with cryptographic provenance attestation. No more manual API tokens — every release is now verifiable from source to package.
+- **Supply chain transparency**: Full documentation of build process and verification steps in SECURITY.md.
+
+### Changed
+- **Publishing workflow**: Migrated from manual token-based uploads to GitHub Actions Trusted Publishing for automated, auditable releases.
+
+### Security
+- ✅ SLSA Build Level 3 compliant
+- ✅ Cryptographic provenance attestation generated automatically
+- ✅ "Verified by GitHub" badge on PyPI
+- ✅ Full source-to-package chain of custody
+
+**This is the first release with supply chain security guarantees.** Previous versions (4.0.0-4.0.3) were published with manual API tokens and lack provenance attestations.
+
 ## [4.0.3] - 2026-10-29
 
 ### Added

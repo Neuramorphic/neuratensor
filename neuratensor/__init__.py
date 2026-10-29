@@ -41,7 +41,7 @@ Training::
 © 2024-2026 Neuramorphic, Inc. — Apache 2.0
 """
 
-__version__ = "4.0.3"
+__version__ = "4.1.0"
 __author__ = "Neuramorphic, Inc."
 __email__ = "info@neuramorphic.ai"
 __license__ = "Apache-2.0"
